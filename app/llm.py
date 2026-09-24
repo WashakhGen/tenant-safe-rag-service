@@ -5,6 +5,10 @@ NO_EVIDENCE_ANSWER: str = (
 
 class DeterministicModel:
     async def answer(self, question: str, evidence: list):
+
+        # `question` is unused: this stand-in quotes the retrieved evidence, but a real
+        # model would use it. Keeping it lets the two be swapped without changes.
+
         if not evidence:
             return NO_EVIDENCE_ANSWER
 
