@@ -74,7 +74,7 @@ async def test_search_returns_only_the_requested_tenant(tenant):
 
 
 async def test_search_top_k_is_applied_after_tenant_filter():
-    results = await vector_client.search("refund", "cedar", 5)
+    results = await vector_client.search("refund settlement", "cedar", 5)
     assert [r.chunk_id for r in results] == ["cd1", "cd2"]
 
 

@@ -1,5 +1,4 @@
 import logging
-import time
 
 from fastapi import FastAPI, Header, HTTPException, status
 
@@ -32,7 +31,6 @@ async def answer(
             f"ignoring account_override={payload.account_override[:64]!r}; "
             f"using trusted tenant {trusted_id!r}"
         )
-    started = time.perf_counter()
     degraded = False
     results = await vector_client.search(payload.question, trusted_id, payload.top_k)
     answer_text = await model_client.answer(payload.question, results)
