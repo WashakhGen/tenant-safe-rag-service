@@ -15,6 +15,10 @@ dependencies = [
 asyncio_mode = "auto"
 pythonpath = ["."]
 
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+
 [dependency-groups]
 dev = [
     "pre-commit>=4.6.2",

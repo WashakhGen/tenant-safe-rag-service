@@ -1,13 +1,15 @@
+import logging
 import time
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, status
 
 from .llm import model_client
-from .schemas import AnswerRequest, AnswerResponse, Evidence
+from .schemas import AnswerRequest, AnswerResponse
 from .vector import vector_client
 
+logger = logging.getLogger(__name__)
+
 app = FastAPI(title="Dvxel AI Knowledge Service")
-request_buffer: list[Evidence] = []
 
 
 @app.get("/health")
@@ -20,19 +22,23 @@ async def answer(
     payload: AnswerRequest,
     trusted_id: str | None = Header(default=None, alias="X-Account-ID"),
 ):
-    if not trusted_id:
-        raise HTTPException(status_code=400, detail="trusted tenant header is required")
-    tenant_id = payload.account_override or trusted_id
+    if not trusted_id or not trusted_id.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="trusted tenant header is required",
+        )
+    if payload.account_override and payload.account_override != trusted_id:
+        logger.warning(
+            f"ignoring account_override={payload.account_override[:64]!r}; "
+            f"using trusted tenant {trusted_id!r}"
+        )
     started = time.perf_counter()
     degraded = False
-    results = await vector_client.search(payload.question, tenant_id, payload.top_k)
-    request_buffer.extend(results)
-    answer_text = await model_client.answer(
-        payload.question, request_buffer[: payload.top_k]
-    )
+    results = await vector_client.search(payload.question, trusted_id, payload.top_k)
+    answer_text = await model_client.answer(payload.question, results)
     return AnswerResponse(
-        account_id=tenant_id,
+        account_id=trusted_id,
         answer=answer_text,
-        sources=request_buffer[: payload.top_k],
+        sources=results,
         degraded=degraded,
     )

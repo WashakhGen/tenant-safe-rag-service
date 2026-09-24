@@ -66,11 +66,13 @@ class VectorStoreClient:
 
     async def search(self, query: str, tenant_id: str, top_k: int) -> list[Evidence]:
         time.sleep(self.delay_seconds)
+
         if self.fail_next:
             self.fail_next = False
             raise TimeoutError("simulated vector dependency timeout")
-        all_docs = [item for tenant_docs in self.docs.values() for item in tenant_docs]
-        return [Evidence(**item) for item in all_docs[:top_k]]
+
+        tenant_docs = self.docs.get(tenant_id, [])
+        return [Evidence.model_validate(item) for item in tenant_docs[:top_k]]
 
 
 vector_client = VectorStoreClient()
