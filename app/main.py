@@ -4,7 +4,7 @@ from fastapi import FastAPI, Header, HTTPException, status
 
 from .llm import model_client
 from .schemas import AnswerRequest, AnswerResponse
-from .vector import vector_client
+from .utils import VectorUnavailableError, search_with_retry
 
 logger = logging.getLogger(__name__)
 
@@ -31,12 +31,22 @@ async def answer(
             f"ignoring account_override={payload.account_override[:64]!r}; "
             f"using trusted tenant {trusted_id!r}"
         )
-    degraded = False
-    results = await vector_client.search(payload.question, trusted_id, payload.top_k)
+
+    try:
+        results = await search_with_retry(payload.question, trusted_id, payload.top_k)
+    except VectorUnavailableError:
+        logger.error("vector store unavailable; returning degraded response")
+        return AnswerResponse(
+            account_id=trusted_id,
+            answer="The knowledge base is temporarily unavailable.",
+            sources=[],
+            degraded=True,
+        )
+
     answer_text = await model_client.answer(payload.question, results)
     return AnswerResponse(
         account_id=trusted_id,
         answer=answer_text,
         sources=results,
-        degraded=degraded,
+        degraded=False,
     )
